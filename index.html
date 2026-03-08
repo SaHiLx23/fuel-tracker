@@ -5,9 +5,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 
-<title>Fuel Tracker</title>
+<title>Fuel Tracker Pro</title>
 
 <link rel="manifest" href="manifest.json">
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
 
@@ -17,18 +19,18 @@ font-family:Arial;
 }
 
 body{
-background:#f4f6f8;
 margin:0;
+background:#eef2f6;
 padding:20px;
 }
 
 .container{
-max-width:900px;
+max-width:1000px;
 margin:auto;
 background:white;
 padding:20px;
-border-radius:10px;
-box-shadow:0 4px 10px rgba(0,0,0,0.15);
+border-radius:12px;
+box-shadow:0 4px 12px rgba(0,0,0,0.15);
 }
 
 h1{
@@ -36,11 +38,11 @@ margin-top:0;
 }
 
 button{
-padding:10px 15px;
 background:#2f3640;
 color:white;
 border:none;
-border-radius:5px;
+padding:10px 16px;
+border-radius:6px;
 cursor:pointer;
 }
 
@@ -49,26 +51,39 @@ background:#353b48;
 }
 
 input,select{
-padding:10px;
-margin:5px 0;
 width:100%;
+padding:10px;
+margin:6px 0;
 }
 
-.vehicleRow{
-display:flex;
-gap:10px;
-}
-
-.formGrid{
+.grid{
 display:grid;
-grid-template-columns:1fr 1fr;
+grid-template-columns:repeat(2,1fr);
 gap:10px;
+}
+
+.stats{
+display:grid;
+grid-template-columns:repeat(3,1fr);
+gap:10px;
+margin:20px 0;
+}
+
+.card{
+background:#f5f6fa;
+padding:15px;
+border-radius:8px;
+text-align:center;
+}
+
+.card h3{
+margin:5px 0;
 }
 
 table{
 width:100%;
-margin-top:20px;
 border-collapse:collapse;
+margin-top:20px;
 }
 
 th,td{
@@ -86,13 +101,17 @@ color:white;
 overflow-x:auto;
 }
 
-@media(max-width:600px){
-
-.vehicleRow{
-flex-direction:column;
+canvas{
+margin-top:20px;
 }
 
-.formGrid{
+@media(max-width:700px){
+
+.grid{
+grid-template-columns:1fr;
+}
+
+.stats{
 grid-template-columns:1fr;
 }
 
@@ -107,7 +126,7 @@ grid-template-columns:1fr;
 
 <div class="container">
 
-<h1>Fuel Tracker</h1>
+<h1>Fuel Tracker Dashboard</h1>
 
 <button onclick="login()">Login with Google</button>
 
@@ -117,13 +136,8 @@ grid-template-columns:1fr;
 
 <h3>Add Vehicle</h3>
 
-<div class="vehicleRow">
-
 <input id="vehicleName" placeholder="Vehicle name">
-
-<button onclick="addVehicle()">Add</button>
-
-</div>
+<button onclick="addVehicle()">Add Vehicle</button>
 
 <select id="vehicleSelect"></select>
 
@@ -131,19 +145,37 @@ grid-template-columns:1fr;
 
 <h3>Add Fuel</h3>
 
-<div class="formGrid">
+<div class="grid">
 
 <input type="date" id="date">
-
 <input type="number" id="km" placeholder="KM">
-
 <input type="number" id="liters" placeholder="Liters">
-
 <input type="number" id="price" placeholder="Price">
 
 </div>
 
 <button onclick="addFuel()">Save Fuel</button>
+
+<div class="stats">
+
+<div class="card">
+<h3>Total Fuel Cost</h3>
+<p id="totalCost">0</p>
+</div>
+
+<div class="card">
+<h3>Average Mileage</h3>
+<p id="avgMileage">0</p>
+</div>
+
+<div class="card">
+<h3>Cost per KM</h3>
+<p id="costPerKm">0</p>
+</div>
+
+</div>
+
+<canvas id="fuelChart"></canvas>
 
 <div class="tableWrap">
 
@@ -156,6 +188,7 @@ grid-template-columns:1fr;
 <th>KM</th>
 <th>Liters</th>
 <th>Price</th>
+<th>Mileage</th>
 </tr>
 
 </thead>
@@ -169,6 +202,7 @@ grid-template-columns:1fr;
 </div>
 
 
+
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -178,6 +212,8 @@ getFirestore,
 collection,
 addDoc,
 getDocs,
+query,
+orderBy,
 onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
@@ -185,18 +221,19 @@ import {
 getAuth,
 GoogleAuthProvider,
 signInWithRedirect,
-getRedirectResult,
 onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
 
 const firebaseConfig={
+
 apiKey:"AIzaSyDQu-PP2tRX1q8LQLx_HmiK6P53S7hQJhU",
 authDomain:"fuel-tracker-2baaf.firebaseapp.com",
 projectId:"fuel-tracker-2baaf",
 storageBucket:"fuel-tracker-2baaf.firebasestorage.app",
 messagingSenderId:"403213454298",
 appId:"1:403213454298:web:852d44e8febb4a975ecee3"
+
 };
 
 const app=initializeApp(firebaseConfig);
@@ -204,7 +241,7 @@ const db=getFirestore(app);
 const auth=getAuth();
 
 let user;
-let unsubscribe;
+let chart;
 
 
 window.login=function(){
@@ -213,9 +250,6 @@ const provider=new GoogleAuthProvider();
 signInWithRedirect(auth,provider);
 
 };
-
-
-getRedirectResult(auth).catch(()=>{});
 
 
 onAuthStateChanged(auth,(u)=>{
@@ -236,20 +270,10 @@ loadVehicles();
 
 window.addVehicle=async function(){
 
-if(!user){
-alert("Login first");
-return;
-}
-
 let name=document.getElementById("vehicleName").value;
 
-if(!name){
-alert("Enter vehicle name");
-return;
-}
-
 await addDoc(collection(db,"users",user.uid,"vehicles"),{
-name:name
+name
 });
 
 document.getElementById("vehicleName").value="";
@@ -261,7 +285,7 @@ loadVehicles();
 
 async function loadVehicles(){
 
-const snapshot=await getDocs(
+const snap=await getDocs(
 collection(db,"users",user.uid,"vehicles")
 );
 
@@ -269,14 +293,14 @@ let select=document.getElementById("vehicleSelect");
 
 select.innerHTML="";
 
-snapshot.forEach(doc=>{
+snap.forEach(doc=>{
 
-let option=document.createElement("option");
+let opt=document.createElement("option");
 
-option.value=doc.id;
-option.text=doc.data().name;
+opt.value=doc.id;
+opt.text=doc.data().name;
 
-select.appendChild(option);
+select.appendChild(opt);
 
 });
 
@@ -297,27 +321,12 @@ document.getElementById("vehicleSelect")
 
 window.addFuel=async function(){
 
-if(!user){
-alert("Login first");
-return;
-}
-
 let vehicle=document.getElementById("vehicleSelect").value;
-
-if(!vehicle){
-alert("Select vehicle");
-return;
-}
 
 let date=document.getElementById("date").value;
 let km=document.getElementById("km").value;
 let liters=document.getElementById("liters").value;
 let price=document.getElementById("price").value;
-
-if(!date||!km||!liters||!price){
-alert("Fill all fields");
-return;
-}
 
 await addDoc(
 collection(db,"users",user.uid,"vehicles",vehicle,"fuel_logs"),
@@ -325,33 +334,61 @@ collection(db,"users",user.uid,"vehicles",vehicle,"fuel_logs"),
 date,
 km:Number(km),
 liters:Number(liters),
-price:Number(price),
-created:Date.now()
+price:Number(price)
 });
-
-document.getElementById("date").value="";
-document.getElementById("km").value="";
-document.getElementById("liters").value="";
-document.getElementById("price").value="";
 
 };
 
 
-function loadHistory(){
 
-if(unsubscribe) unsubscribe();
+function loadHistory(){
 
 let vehicle=document.getElementById("vehicleSelect").value;
 
-unsubscribe=onSnapshot(
+const q=query(
 collection(db,"users",user.uid,"vehicles",vehicle,"fuel_logs"),
-(snapshot)=>{
+orderBy("km")
+);
+
+onSnapshot(q,(snapshot)=>{
 
 let html="";
+
+let prevKM=null;
+
+let totalCost=0;
+let mileageSum=0;
+let mileageCount=0;
+let distanceSum=0;
+
+let labels=[];
+let costs=[];
 
 snapshot.forEach(doc=>{
 
 let d=doc.data();
+
+totalCost+=d.price;
+
+labels.push(d.date);
+costs.push(d.price);
+
+let mileage="-";
+
+if(prevKM!==null){
+
+let distance=d.km-prevKM;
+
+distanceSum+=distance;
+
+mileage=(distance/d.liters).toFixed(2);
+
+mileageSum+=parseFloat(mileage);
+mileageCount++;
+
+}
+
+prevKM=d.km;
 
 html+=`
 <tr>
@@ -359,12 +396,37 @@ html+=`
 <td>${d.km}</td>
 <td>${d.liters}</td>
 <td>${d.price}</td>
+<td>${mileage}</td>
 </tr>
 `;
 
 });
 
 document.getElementById("history").innerHTML=html;
+
+let avgMileage=(mileageSum/mileageCount)||0;
+let costKM=(totalCost/distanceSum)||0;
+
+document.getElementById("totalCost").innerText="₹"+totalCost.toFixed(2);
+document.getElementById("avgMileage").innerText=avgMileage.toFixed(2);
+document.getElementById("costPerKm").innerText="₹"+costKM.toFixed(2);
+
+
+if(chart) chart.destroy();
+
+chart=new Chart(document.getElementById("fuelChart"),{
+
+type:"bar",
+
+data:{
+labels:labels,
+datasets:[{
+label:"Fuel Cost",
+data:costs
+}]
+}
+
+});
 
 });
 
