@@ -1,78 +1,53 @@
-<!DOCTYPE html>
-<html>
-<head>
-<title>Fuel Tracker</title>
-
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"></script>
-
-</head>
-
-<body>
-
-<h2>Fuel Entry</h2>
-
-Date
-<input type="date" id="date"><br><br>
-
-KM
-<input type="number" id="km"><br><br>
-
-Price
-<input type="number" id="price"><br><br>
-
-<button onclick="save()">Save</button>
-
-<h2>History</h2>
-
-<table border="1">
-<thead>
-<tr>
-<th>Date</th>
-<th>KM</th>
-<th>Price</th>
-</tr>
-</thead>
-<tbody id="history"></tbody>
-</table>
-
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, addDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
 
 const firebaseConfig = {
-apiKey:"YOUR_KEY",
-authDomain:"YOUR_DOMAIN",
-projectId:"YOUR_PROJECT"
+  apiKey: "AIzaSyDQu-PP2tRX1q8LQLx_HmiK6P53S7hQJhU",
+  authDomain: "fuel-tracker-2baaf.firebaseapp.com",
+  projectId: "fuel-tracker-2baaf",
+  storageBucket: "fuel-tracker-2baaf.firebasestorage.app",
+  messagingSenderId: "403213454298",
+  appId: "1:403213454298:web:852d44e8febb4a975ecee3",
+  measurementId: "G-LTE52QM0H6"
 };
+
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-window.save = async function(){
 
-await addDoc(collection(db,"fuel"),{
-date:document.getElementById("date").value,
-km:document.getElementById("km").value,
-price:document.getElementById("price").value
+window.addFuel = async function(){
+
+let date=document.getElementById("date").value;
+let km=document.getElementById("km").value;
+let price=document.getElementById("price").value;
+
+await addDoc(collection(db,"fuel_logs"),{
+date:date,
+km:km,
+price:price
 });
 
-load();
+loadHistory();
 
 }
 
-async function load(){
 
-const querySnapshot = await getDocs(collection(db,"fuel"));
+
+async function loadHistory(){
+
+const querySnapshot = await getDocs(collection(db,"fuel_logs"));
 
 let html="";
 
-querySnapshot.forEach(doc=>{
+querySnapshot.forEach((doc)=>{
 
 let d=doc.data();
 
-html+=`
+html += `
 <tr>
 <td>${d.date}</td>
 <td>${d.km}</td>
@@ -86,9 +61,7 @@ document.getElementById("history").innerHTML=html;
 
 }
 
-load();
+
+window.onload = loadHistory;
 
 </script>
-
-</body>
-</html>
