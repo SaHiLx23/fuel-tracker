@@ -1,10 +1,10 @@
 {
 "name":"Fuel Tracker",
 "short_name":"Fuel",
-"start_url":"/",
+"start_url":"/fuel-tracker/",
 "display":"standalone",
 "background_color":"#ffffff",
-"theme_color":"#000000",
+"theme_color":"#2f3640",
 "icons":[
 {
 "src":"icon-192.png",
