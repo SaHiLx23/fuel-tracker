@@ -13,21 +13,34 @@
 
 <style>
 
-*{box-sizing:border-box;font-family:Arial}
+:root{
+--bg:#eef2f6;
+--card:#ffffff;
+--text:#000;
+--button:#2f3640;
+}
+
+.dark{
+--bg:#1e1e1e;
+--card:#2c2c2c;
+--text:#ffffff;
+--button:#444;
+}
 
 body{
 margin:0;
-background:#eef2f6;
+background:var(--bg);
+color:var(--text);
+font-family:Arial;
 padding:20px;
 }
 
 .container{
 max-width:1000px;
 margin:auto;
-background:white;
+background:var(--card);
 padding:20px;
 border-radius:10px;
-box-shadow:0 4px 12px rgba(0,0,0,0.15);
 }
 
 .topbar{
@@ -37,15 +50,13 @@ align-items:center;
 }
 
 button{
-background:#2f3640;
+background:var(--button);
 color:white;
 border:none;
-padding:10px 16px;
-border-radius:6px;
+padding:10px 15px;
 cursor:pointer;
+border-radius:5px;
 }
-
-button:hover{background:#353b48}
 
 input,select{
 width:100%;
@@ -67,10 +78,10 @@ margin:20px 0;
 }
 
 .card{
-background:#f5f6fa;
+background:var(--bg);
 padding:15px;
-border-radius:8px;
 text-align:center;
+border-radius:8px;
 }
 
 table{
@@ -80,17 +91,14 @@ margin-top:20px;
 }
 
 th,td{
-border:1px solid #ddd;
+border:1px solid #ccc;
 padding:8px;
 text-align:center;
 }
 
-th{
-background:#2f3640;
-color:white;
+canvas{
+margin-top:20px;
 }
-
-canvas{margin-top:20px}
 
 @media(max-width:700px){
 
@@ -112,6 +120,7 @@ canvas{margin-top:20px}
 <h2>Fuel Tracker</h2>
 
 <div>
+<button id="themeBtn">Theme</button>
 <button id="loginBtn">Login</button>
 <button id="logoutBtn" style="display:none">Logout</button>
 </div>
@@ -147,7 +156,7 @@ canvas{margin-top:20px}
 <div class="stats">
 
 <div class="card">
-<h3>Total Fuel Cost</h3>
+<h3>Total Cost</h3>
 <p id="totalCost">0</p>
 </div>
 
@@ -157,7 +166,7 @@ canvas{margin-top:20px}
 </div>
 
 <div class="card">
-<h3>Cost / KM</h3>
+<h3>Cost/KM</h3>
 <p id="costPerKm">0</p>
 </div>
 
@@ -184,6 +193,7 @@ canvas{margin-top:20px}
 </table>
 
 </div>
+
 
 
 <script type="module">
@@ -242,9 +252,7 @@ signOut(auth);
 
 };
 
-
 getRedirectResult(auth).catch(()=>{});
-
 
 onAuthStateChanged(auth,(u)=>{
 
@@ -409,6 +417,7 @@ document.getElementById("costPerKm").innerText="₹"+costKM.toFixed(2);
 if(chart) chart.destroy();
 
 chart=new Chart(document.getElementById("fuelChart"),{
+
 type:"bar",
 data:{
 labels:labels,
@@ -417,10 +426,31 @@ label:"Fuel Cost",
 data:costs
 }]
 }
-});
 
 });
 
+});
+
+}
+
+
+/* THEME SWITCH */
+
+const themeBtn=document.getElementById("themeBtn");
+
+themeBtn.onclick=()=>{
+
+document.body.classList.toggle("dark");
+
+localStorage.setItem(
+"theme",
+document.body.classList.contains("dark")
+);
+
+};
+
+if(localStorage.getItem("theme")==="true"){
+document.body.classList.add("dark");
 }
 
 </script>
