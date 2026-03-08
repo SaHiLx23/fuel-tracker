@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Fuel Tracker</title>
+
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"></script>
+
+</head>
+
+<body>
+
+<h2>Fuel Entry</h2>
+
+Date
+<input type="date" id="date"><br><br>
+
+KM
+<input type="number" id="km"><br><br>
+
+Price
+<input type="number" id="price"><br><br>
+
+<button onclick="save()">Save</button>
+
+<h2>History</h2>
+
+<table border="1">
+<thead>
+<tr>
+<th>Date</th>
+<th>KM</th>
+<th>Price</th>
+</tr>
+</thead>
+<tbody id="history"></tbody>
+</table>
+
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getFirestore, addDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+const firebaseConfig = {
+apiKey:"YOUR_KEY",
+authDomain:"YOUR_DOMAIN",
+projectId:"YOUR_PROJECT"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+window.save = async function(){
+
+await addDoc(collection(db,"fuel"),{
+date:document.getElementById("date").value,
+km:document.getElementById("km").value,
+price:document.getElementById("price").value
+});
+
+load();
+
+}
+
+async function load(){
+
+const querySnapshot = await getDocs(collection(db,"fuel"));
+
+let html="";
+
+querySnapshot.forEach(doc=>{
+
+let d=doc.data();
+
+html+=`
+<tr>
+<td>${d.date}</td>
+<td>${d.km}</td>
+<td>${d.price}</td>
+</tr>
+`;
+
+});
+
+document.getElementById("history").innerHTML=html;
+
+}
+
+load();
+
+</script>
+
+</body>
+</html>
