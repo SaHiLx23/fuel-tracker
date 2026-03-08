@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html>
-
 <head>
 
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 
 <title>Fuel Tracker</title>
@@ -11,10 +11,15 @@
 
 <style>
 
-body{
+*{
+box-sizing:border-box;
 font-family:Arial;
+}
+
+body{
 background:#f4f6f8;
-padding:15px;
+margin:0;
+padding:20px;
 }
 
 .container{
@@ -23,15 +28,41 @@ margin:auto;
 background:white;
 padding:20px;
 border-radius:10px;
+box-shadow:0 4px 10px rgba(0,0,0,0.15);
 }
 
-input,select{
-padding:8px;
-margin:5px;
+h1{
+margin-top:0;
 }
 
 button{
-padding:8px 12px;
+padding:10px 15px;
+background:#2f3640;
+color:white;
+border:none;
+border-radius:5px;
+cursor:pointer;
+}
+
+button:hover{
+background:#353b48;
+}
+
+input,select{
+padding:10px;
+margin:5px 0;
+width:100%;
+}
+
+.vehicleRow{
+display:flex;
+gap:10px;
+}
+
+.formGrid{
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:10px;
 }
 
 table{
@@ -40,10 +71,31 @@ margin-top:20px;
 border-collapse:collapse;
 }
 
-td,th{
-border:1px solid #ccc;
+th,td{
+border:1px solid #ddd;
 padding:8px;
 text-align:center;
+}
+
+th{
+background:#2f3640;
+color:white;
+}
+
+.tableWrap{
+overflow-x:auto;
+}
+
+@media(max-width:600px){
+
+.vehicleRow{
+flex-direction:column;
+}
+
+.formGrid{
+grid-template-columns:1fr;
+}
+
 }
 
 </style>
@@ -55,21 +107,23 @@ text-align:center;
 
 <div class="container">
 
-<h2>Fuel Tracker</h2>
+<h1>Fuel Tracker</h1>
 
 <button onclick="login()">Login with Google</button>
 
-<p id="userName"></p>
+<p id="userInfo"></p>
 
 <hr>
 
 <h3>Add Vehicle</h3>
 
+<div class="vehicleRow">
+
 <input id="vehicleName" placeholder="Vehicle name">
 
 <button onclick="addVehicle()">Add</button>
 
-<br>
+</div>
 
 <select id="vehicleSelect"></select>
 
@@ -77,22 +131,33 @@ text-align:center;
 
 <h3>Add Fuel</h3>
 
+<div class="formGrid">
+
 <input type="date" id="date">
+
 <input type="number" id="km" placeholder="KM">
+
 <input type="number" id="liters" placeholder="Liters">
+
 <input type="number" id="price" placeholder="Price">
 
-<button onclick="addFuel()">Save</button>
+</div>
+
+<button onclick="addFuel()">Save Fuel</button>
+
+<div class="tableWrap">
 
 <table>
 
 <thead>
+
 <tr>
 <th>Date</th>
 <th>KM</th>
 <th>Liters</th>
 <th>Price</th>
 </tr>
+
 </thead>
 
 <tbody id="history"></tbody>
@@ -101,14 +166,28 @@ text-align:center;
 
 </div>
 
+</div>
 
 
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import {
+getFirestore,
+collection,
+addDoc,
+getDocs,
+onSnapshot
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+import {
+getAuth,
+GoogleAuthProvider,
+signInWithRedirect,
+getRedirectResult,
+onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
 
 const firebaseConfig={
@@ -120,38 +199,65 @@ messagingSenderId:"403213454298",
 appId:"1:403213454298:web:852d44e8febb4a975ecee3"
 };
 
-
 const app=initializeApp(firebaseConfig);
 const db=getFirestore(app);
 const auth=getAuth();
 
 let user;
+let unsubscribe;
 
-window.login=async function(){
+
+window.login=function(){
 
 const provider=new GoogleAuthProvider();
+signInWithRedirect(auth,provider);
 
-const result=await signInWithPopup(auth,provider);
+};
 
-user=result.user;
 
-document.getElementById("userName").innerText=user.displayName;
+getRedirectResult(auth).catch(()=>{});
+
+
+onAuthStateChanged(auth,(u)=>{
+
+if(u){
+
+user=u;
+
+document.getElementById("userInfo").innerText=
+"Logged in: "+user.email;
 
 loadVehicles();
 
 }
 
+});
+
+
 window.addVehicle=async function(){
 
+if(!user){
+alert("Login first");
+return;
+}
+
 let name=document.getElementById("vehicleName").value;
+
+if(!name){
+alert("Enter vehicle name");
+return;
+}
 
 await addDoc(collection(db,"users",user.uid,"vehicles"),{
 name:name
 });
 
+document.getElementById("vehicleName").value="";
+
 loadVehicles();
 
-}
+};
+
 
 async function loadVehicles(){
 
@@ -174,34 +280,72 @@ select.appendChild(option);
 
 });
 
+if(select.options.length>0){
+
+select.selectedIndex=0;
+
+loadHistory();
+
 }
+
+}
+
+
+document.getElementById("vehicleSelect")
+.addEventListener("change",loadHistory);
+
 
 window.addFuel=async function(){
 
+if(!user){
+alert("Login first");
+return;
+}
+
 let vehicle=document.getElementById("vehicleSelect").value;
+
+if(!vehicle){
+alert("Select vehicle");
+return;
+}
 
 let date=document.getElementById("date").value;
 let km=document.getElementById("km").value;
 let liters=document.getElementById("liters").value;
 let price=document.getElementById("price").value;
 
+if(!date||!km||!liters||!price){
+alert("Fill all fields");
+return;
+}
+
 await addDoc(
 collection(db,"users",user.uid,"vehicles",vehicle,"fuel_logs"),
 {
-date,km,liters,price
+date,
+km:Number(km),
+liters:Number(liters),
+price:Number(price),
+created:Date.now()
 });
 
-loadHistory();
+document.getElementById("date").value="";
+document.getElementById("km").value="";
+document.getElementById("liters").value="";
+document.getElementById("price").value="";
 
-}
+};
 
-async function loadHistory(){
+
+function loadHistory(){
+
+if(unsubscribe) unsubscribe();
 
 let vehicle=document.getElementById("vehicleSelect").value;
 
-const snapshot=await getDocs(
-collection(db,"users",user.uid,"vehicles",vehicle,"fuel_logs")
-);
+unsubscribe=onSnapshot(
+collection(db,"users",user.uid,"vehicles",vehicle,"fuel_logs"),
+(snapshot)=>{
 
 let html="";
 
@@ -221,6 +365,8 @@ html+=`
 });
 
 document.getElementById("history").innerHTML=html;
+
+});
 
 }
 
