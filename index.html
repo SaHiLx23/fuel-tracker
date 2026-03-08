@@ -1,67 +1,53 @@
 <!DOCTYPE html>
 <html>
-<head>
-<meta charset="UTF-8">
-<title>Fuel Tracker Pro</title>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<head>
+
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<title>Fuel Tracker</title>
+
+<link rel="manifest" href="manifest.json">
 
 <style>
 
 body{
 font-family:Arial;
-background:#eef1f5;
-padding:20px;
+background:#f4f6f8;
+padding:15px;
 }
 
 .container{
-max-width:1000px;
+max-width:900px;
 margin:auto;
 background:white;
-padding:25px;
+padding:20px;
 border-radius:10px;
-box-shadow:0 3px 12px rgba(0,0,0,0.15);
 }
 
-h1{text-align:center;}
+input,select{
+padding:8px;
+margin:5px;
+}
 
-input{padding:8px;margin:5px;}
-
-button{padding:8px 14px;cursor:pointer;}
+button{
+padding:8px 12px;
+}
 
 table{
 width:100%;
-border-collapse:collapse;
 margin-top:20px;
+border-collapse:collapse;
 }
 
-th,td{
+td,th{
 border:1px solid #ccc;
 padding:8px;
 text-align:center;
 }
 
-th{
-background:#1e272e;
-color:white;
-}
-
-.stats{
-display:flex;
-justify-content:space-between;
-margin-top:20px;
-}
-
-.statbox{
-background:#f1f2f6;
-padding:15px;
-border-radius:6px;
-width:30%;
-text-align:center;
-font-weight:bold;
-}
-
 </style>
+
 </head>
 
 
@@ -69,37 +55,34 @@ font-weight:bold;
 
 <div class="container">
 
-<h1>Fuel Tracker Dashboard</h1>
+<h2>Fuel Tracker</h2>
 
-<h3>Add Fuel Entry</h3>
+<button onclick="login()">Login with Google</button>
 
-Date <input type="date" id="date">
-KM <input type="number" id="km">
-Liters <input type="number" id="liters">
-Price ₹ <input type="number" id="price">
+<p id="userName"></p>
+
+<hr>
+
+<h3>Add Vehicle</h3>
+
+<input id="vehicleName" placeholder="Vehicle name">
+
+<button onclick="addVehicle()">Add</button>
+
+<br>
+
+<select id="vehicleSelect"></select>
+
+<hr>
+
+<h3>Add Fuel</h3>
+
+<input type="date" id="date">
+<input type="number" id="km" placeholder="KM">
+<input type="number" id="liters" placeholder="Liters">
+<input type="number" id="price" placeholder="Price">
 
 <button onclick="addFuel()">Save</button>
-
-<div class="stats">
-
-<div class="statbox">
-Total Fuel Cost
-<div id="totalCost">0</div>
-</div>
-
-<div class="statbox">
-Average Mileage
-<div id="avgMileage">0</div>
-</div>
-
-<div class="statbox">
-Cost per KM
-<div id="costKM">0</div>
-</div>
-
-</div>
-
-<h3>Fuel History</h3>
 
 <table>
 
@@ -109,19 +92,12 @@ Cost per KM
 <th>KM</th>
 <th>Liters</th>
 <th>Price</th>
-<th>Mileage</th>
-<th>Cost/KM</th>
-<th>Delete</th>
 </tr>
 </thead>
 
 <tbody id="history"></tbody>
 
 </table>
-
-<h3>Fuel Cost Chart</h3>
-
-<canvas id="fuelChart"></canvas>
 
 </div>
 
@@ -130,95 +106,108 @@ Cost per KM
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-const firebaseConfig = {
-apiKey: "AIzaSyDQu-PP2tRX1q8LQLx_HmiK6P53S7hQJhU",
-authDomain: "fuel-tracker-2baaf.firebaseapp.com",
-projectId: "fuel-tracker-2baaf",
-storageBucket: "fuel-tracker-2baaf.firebasestorage.app",
-messagingSenderId: "403213454298",
-appId: "1:403213454298:web:852d44e8febb4a975ecee3",
-measurementId: "G-LTE52QM0H6"
+import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+
+const firebaseConfig={
+apiKey:"AIzaSyDQu-PP2tRX1q8LQLx_HmiK6P53S7hQJhU",
+authDomain:"fuel-tracker-2baaf.firebaseapp.com",
+projectId:"fuel-tracker-2baaf",
+storageBucket:"fuel-tracker-2baaf.firebasestorage.app",
+messagingSenderId:"403213454298",
+appId:"1:403213454298:web:852d44e8febb4a975ecee3"
 };
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
 
-window.addFuel = async function(){
+const app=initializeApp(firebaseConfig);
+const db=getFirestore(app);
+const auth=getAuth();
 
-let date=document.getElementById("date").value;
-let km=parseFloat(document.getElementById("km").value);
-let liters=parseFloat(document.getElementById("liters").value);
-let price=parseFloat(document.getElementById("price").value);
+let user;
 
-if(!date||!km||!liters||!price){
-alert("Fill all fields");
-return;
+window.login=async function(){
+
+const provider=new GoogleAuthProvider();
+
+const result=await signInWithPopup(auth,provider);
+
+user=result.user;
+
+document.getElementById("userName").innerText=user.displayName;
+
+loadVehicles();
+
 }
 
-await addDoc(collection(db,"fuel_logs"),{
-date,
-km,
-liters,
-price
+window.addVehicle=async function(){
+
+let name=document.getElementById("vehicleName").value;
+
+await addDoc(collection(db,"users",user.uid,"vehicles"),{
+name:name
+});
+
+loadVehicles();
+
+}
+
+async function loadVehicles(){
+
+const snapshot=await getDocs(
+collection(db,"users",user.uid,"vehicles")
+);
+
+let select=document.getElementById("vehicleSelect");
+
+select.innerHTML="";
+
+snapshot.forEach(doc=>{
+
+let option=document.createElement("option");
+
+option.value=doc.id;
+option.text=doc.data().name;
+
+select.appendChild(option);
+
+});
+
+}
+
+window.addFuel=async function(){
+
+let vehicle=document.getElementById("vehicleSelect").value;
+
+let date=document.getElementById("date").value;
+let km=document.getElementById("km").value;
+let liters=document.getElementById("liters").value;
+let price=document.getElementById("price").value;
+
+await addDoc(
+collection(db,"users",user.uid,"vehicles",vehicle,"fuel_logs"),
+{
+date,km,liters,price
 });
 
 loadHistory();
-}
-
-window.deleteEntry=async function(id){
-
-await deleteDoc(doc(db,"fuel_logs",id));
-loadHistory();
 
 }
-
-
-let chart;
 
 async function loadHistory(){
 
-const q=query(collection(db,"fuel_logs"),orderBy("km"));
-const querySnapshot=await getDocs(q);
+let vehicle=document.getElementById("vehicleSelect").value;
+
+const snapshot=await getDocs(
+collection(db,"users",user.uid,"vehicles",vehicle,"fuel_logs")
+);
 
 let html="";
-let prevKM=null;
 
-let totalCost=0;
-let mileageSum=0;
-let mileageCount=0;
-let distanceSum=0;
+snapshot.forEach(doc=>{
 
-let labels=[];
-let costs=[];
-
-querySnapshot.forEach((docSnap)=>{
-
-let d=docSnap.data();
-
-totalCost+=d.price;
-
-labels.push(d.date);
-costs.push(d.price);
-
-let mileage="-";
-let costKM="-";
-
-if(prevKM!==null){
-
-let distance=d.km-prevKM;
-distanceSum+=distance;
-
-mileage=(distance/d.liters).toFixed(2);
-costKM=(d.price/distance).toFixed(2);
-
-mileageSum+=parseFloat(mileage);
-mileageCount++;
-
-}
-
-prevKM=d.km;
+let d=doc.data();
 
 html+=`
 <tr>
@@ -226,11 +215,6 @@ html+=`
 <td>${d.km}</td>
 <td>${d.liters}</td>
 <td>${d.price}</td>
-<td>${mileage}</td>
-<td>${costKM}</td>
-<td>
-<button onclick="deleteEntry('${docSnap.id}')">Delete</button>
-</td>
 </tr>
 `;
 
@@ -238,30 +222,18 @@ html+=`
 
 document.getElementById("history").innerHTML=html;
 
-let avgMileage=(mileageSum/mileageCount)||0;
-let costPerKM=(totalCost/distanceSum)||0;
-
-document.getElementById("totalCost").innerText="₹"+totalCost.toFixed(2);
-document.getElementById("avgMileage").innerText=avgMileage.toFixed(2);
-document.getElementById("costKM").innerText="₹"+costPerKM.toFixed(2);
-
-
-if(chart) chart.destroy();
-
-chart=new Chart(document.getElementById("fuelChart"),{
-type:"bar",
-data:{
-labels:labels,
-datasets:[{
-label:"Fuel Cost",
-data:costs
-}]
-}
-});
-
 }
 
-window.onload=loadHistory;
+</script>
+
+
+<script>
+
+if("serviceWorker" in navigator){
+
+navigator.serviceWorker.register("service-worker.js");
+
+}
 
 </script>
 
