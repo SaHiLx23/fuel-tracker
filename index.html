@@ -13,10 +13,7 @@
 
 <style>
 
-*{
-box-sizing:border-box;
-font-family:Arial;
-}
+*{box-sizing:border-box;font-family:Arial}
 
 body{
 margin:0;
@@ -29,12 +26,14 @@ max-width:1000px;
 margin:auto;
 background:white;
 padding:20px;
-border-radius:12px;
+border-radius:10px;
 box-shadow:0 4px 12px rgba(0,0,0,0.15);
 }
 
-h1{
-margin-top:0;
+.topbar{
+display:flex;
+justify-content:space-between;
+align-items:center;
 }
 
 button{
@@ -46,14 +45,12 @@ border-radius:6px;
 cursor:pointer;
 }
 
-button:hover{
-background:#353b48;
-}
+button:hover{background:#353b48}
 
 input,select{
 width:100%;
 padding:10px;
-margin:6px 0;
+margin:5px 0;
 }
 
 .grid{
@@ -76,10 +73,6 @@ border-radius:8px;
 text-align:center;
 }
 
-.card h3{
-margin:5px 0;
-}
-
 table{
 width:100%;
 border-collapse:collapse;
@@ -97,23 +90,12 @@ background:#2f3640;
 color:white;
 }
 
-.tableWrap{
-overflow-x:auto;
-}
-
-canvas{
-margin-top:20px;
-}
+canvas{margin-top:20px}
 
 @media(max-width:700px){
 
-.grid{
-grid-template-columns:1fr;
-}
-
-.stats{
-grid-template-columns:1fr;
-}
+.grid{grid-template-columns:1fr}
+.stats{grid-template-columns:1fr}
 
 }
 
@@ -126,9 +108,16 @@ grid-template-columns:1fr;
 
 <div class="container">
 
-<h1>Fuel Tracker Dashboard</h1>
+<div class="topbar">
 
-<button onclick="login()">Login with Google</button>
+<h2>Fuel Tracker</h2>
+
+<div>
+<button id="loginBtn">Login</button>
+<button id="logoutBtn" style="display:none">Logout</button>
+</div>
+
+</div>
 
 <p id="userInfo"></p>
 
@@ -137,7 +126,7 @@ grid-template-columns:1fr;
 <h3>Add Vehicle</h3>
 
 <input id="vehicleName" placeholder="Vehicle name">
-<button onclick="addVehicle()">Add Vehicle</button>
+<button id="addVehicleBtn">Add Vehicle</button>
 
 <select id="vehicleSelect"></select>
 
@@ -154,12 +143,12 @@ grid-template-columns:1fr;
 
 </div>
 
-<button onclick="addFuel()">Save Fuel</button>
+<button id="saveFuelBtn">Save Fuel</button>
 
 <div class="stats">
 
 <div class="card">
-<h3>Total Fuel Cost</h3>
+<h3>Total Cost</h3>
 <p id="totalCost">0</p>
 </div>
 
@@ -169,15 +158,13 @@ grid-template-columns:1fr;
 </div>
 
 <div class="card">
-<h3>Cost per KM</h3>
+<h3>Cost / KM</h3>
 <p id="costPerKm">0</p>
 </div>
 
 </div>
 
 <canvas id="fuelChart"></canvas>
-
-<div class="tableWrap">
 
 <table>
 
@@ -199,9 +186,6 @@ grid-template-columns:1fr;
 
 </div>
 
-</div>
-
-
 
 <script type="module">
 
@@ -221,19 +205,18 @@ import {
 getAuth,
 GoogleAuthProvider,
 signInWithRedirect,
+signOut,
 onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
 
 const firebaseConfig={
-
 apiKey:"AIzaSyDQu-PP2tRX1q8LQLx_HmiK6P53S7hQJhU",
 authDomain:"fuel-tracker-2baaf.firebaseapp.com",
 projectId:"fuel-tracker-2baaf",
 storageBucket:"fuel-tracker-2baaf.firebasestorage.app",
 messagingSenderId:"403213454298",
 appId:"1:403213454298:web:852d44e8febb4a975ecee3"
-
 };
 
 const app=initializeApp(firebaseConfig);
@@ -243,14 +226,21 @@ const auth=getAuth();
 let user;
 let chart;
 
+const loginBtn=document.getElementById("loginBtn");
+const logoutBtn=document.getElementById("logoutBtn");
 
-window.login=function(){
+loginBtn.onclick=()=>{
 
 const provider=new GoogleAuthProvider();
 signInWithRedirect(auth,provider);
 
 };
 
+logoutBtn.onclick=()=>{
+
+signOut(auth);
+
+};
 
 onAuthStateChanged(auth,(u)=>{
 
@@ -258,23 +248,28 @@ if(u){
 
 user=u;
 
-document.getElementById("userInfo").innerText=
-"Logged in: "+user.email;
+loginBtn.style.display="none";
+logoutBtn.style.display="inline-block";
+
+document.getElementById("userInfo").innerText="Logged in: "+u.email;
 
 loadVehicles();
+
+}else{
+
+loginBtn.style.display="inline-block";
+logoutBtn.style.display="none";
 
 }
 
 });
 
 
-window.addVehicle=async function(){
+document.getElementById("addVehicleBtn").onclick=async()=>{
 
 let name=document.getElementById("vehicleName").value;
 
-await addDoc(collection(db,"users",user.uid,"vehicles"),{
-name
-});
+await addDoc(collection(db,"users",user.uid,"vehicles"),{name});
 
 document.getElementById("vehicleName").value="";
 
@@ -285,9 +280,7 @@ loadVehicles();
 
 async function loadVehicles(){
 
-const snap=await getDocs(
-collection(db,"users",user.uid,"vehicles")
-);
+const snap=await getDocs(collection(db,"users",user.uid,"vehicles"));
 
 let select=document.getElementById("vehicleSelect");
 
@@ -319,7 +312,7 @@ document.getElementById("vehicleSelect")
 .addEventListener("change",loadHistory);
 
 
-window.addFuel=async function(){
+document.getElementById("saveFuelBtn").onclick=async()=>{
 
 let vehicle=document.getElementById("vehicleSelect").value;
 
@@ -338,7 +331,6 @@ price:Number(price)
 });
 
 };
-
 
 
 function loadHistory(){
