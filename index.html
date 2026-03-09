@@ -12,7 +12,7 @@
 <style>
 
 :root{
---bg:#f2f2f2;
+--bg:#f4f6f8;
 --card:#ffffff;
 --text:#000;
 --accent:#2c7be5;
@@ -35,15 +35,38 @@ color:var(--text);
 .container{
 max-width:900px;
 margin:auto;
-padding:20px;
+padding:15px;
 }
+
+h2{margin-top:0}
 
 .card{
 background:var(--card);
 padding:15px;
 border-radius:10px;
 margin-bottom:15px;
+box-shadow:0 2px 8px rgba(0,0,0,0.1);
+}
+
+.vehicle-cards{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
+gap:10px;
+margin-bottom:15px;
+}
+
+.vehicle-card{
+background:var(--card);
+padding:12px;
+border-radius:10px;
+text-align:center;
+cursor:pointer;
 box-shadow:0 2px 6px rgba(0,0,0,0.1);
+}
+
+.vehicle-card.active{
+background:var(--accent);
+color:white;
 }
 
 .grid{
@@ -52,36 +75,30 @@ grid-template-columns:1fr 1fr;
 gap:10px;
 }
 
-input,select{
+label{
+font-weight:bold;
+font-size:13px;
+}
+
+input{
 width:100%;
 padding:10px;
 margin-top:5px;
 }
 
 button{
-padding:10px;
 background:var(--accent);
 color:white;
 border:none;
+padding:10px;
 border-radius:6px;
 cursor:pointer;
-}
-
-table{
-width:100%;
-border-collapse:collapse;
 margin-top:10px;
-}
-
-td,th{
-border:1px solid #ddd;
-padding:8px;
-text-align:center;
 }
 
 .summary{
 display:grid;
-grid-template-columns:1fr 1fr 1fr;
+grid-template-columns:repeat(3,1fr);
 gap:10px;
 }
 
@@ -90,10 +107,43 @@ background:var(--card);
 padding:10px;
 border-radius:8px;
 text-align:center;
+box-shadow:0 1px 4px rgba(0,0,0,0.1);
+}
+
+.table-container{
+overflow-x:auto;
+}
+
+table{
+width:100%;
+border-collapse:collapse;
+}
+
+td,th{
+border:1px solid #ddd;
+padding:8px;
+text-align:center;
 }
 
 canvas{
-margin-top:15px;
+margin-top:20px;
+}
+
+.fab{
+position:fixed;
+bottom:20px;
+right:20px;
+background:var(--accent);
+color:white;
+font-size:26px;
+border-radius:50%;
+width:55px;
+height:55px;
+display:flex;
+align-items:center;
+justify-content:center;
+cursor:pointer;
+box-shadow:0 4px 12px rgba(0,0,0,0.3);
 }
 
 @media(max-width:700px){
@@ -109,16 +159,28 @@ margin-top:15px;
 <div class="container">
 
 <h2>Fuel Tracker</h2>
+
 <button onclick="toggleTheme()">Toggle Theme</button>
 
 <div class="card">
 
-<h3>Add Vehicle</h3>
+<h3>Vehicles</h3>
 
-<input id="vehicleName" placeholder="Vehicle name">
+<div class="vehicle-cards" id="vehicleCards"></div>
+
+<input id="vehicleName" placeholder="Add new vehicle">
 <button onclick="addVehicle()">Add Vehicle</button>
 
-<select id="vehicleSelect" onchange="render()"></select>
+</div>
+
+
+<div class="summary">
+
+<div>Total Cost<br>₹ <span id="totalCost">0</span></div>
+
+<div>Average Mileage<br><span id="avgMileage">0</span> km/l</div>
+
+<div>Total Entries<br><span id="entryCount">0</span></div>
 
 </div>
 
@@ -129,26 +191,29 @@ margin-top:15px;
 
 <div class="grid">
 
+<div>
+<label>Date</label>
 <input id="date" type="date">
-<input id="km" placeholder="Odometer KM">
+</div>
 
-<input id="liters" placeholder="Fuel Liters">
-<input id="price" placeholder="Total Price">
+<div>
+<label>Odometer KM</label>
+<input id="km">
+</div>
+
+<div>
+<label>Fuel Liters</label>
+<input id="liters">
+</div>
+
+<div>
+<label>Total Price</label>
+<input id="price">
+</div>
 
 </div>
 
-<button onclick="addFuel()">Save Fuel</button>
-
-</div>
-
-
-<div class="summary">
-
-<div>Total Cost ₹<br><b id="totalCost">0</b></div>
-
-<div>Average Mileage<br><b id="avgMileage">0</b></div>
-
-<div>Monthly Cost ₹<br><b id="monthCost">0</b></div>
+<button onclick="addFuel()">Save Entry</button>
 
 </div>
 
@@ -156,6 +221,8 @@ margin-top:15px;
 <div class="card">
 
 <h3>Fuel History</h3>
+
+<div class="table-container">
 
 <table>
 
@@ -176,80 +243,90 @@ margin-top:15px;
 
 </div>
 
+</div>
+
 
 <div class="card">
 
-<h3>Charts</h3>
+<h3>Analytics</h3>
 
 <canvas id="costChart"></canvas>
-<canvas id="mileageChart"></canvas>
+<canvas id="efficiencyChart"></canvas>
+<canvas id="monthlyChart"></canvas>
 
 </div>
 
 
 <div class="card">
 
-<h3>Service Reminder</h3>
-
-<input id="serviceKM" placeholder="Next service KM">
-<button onclick="saveService()">Save Reminder</button>
-
-<p id="serviceAlert"></p>
-
-</div>
-
-
-<div class="card">
-
-<h3>Export Data</h3>
+<h3>Backup & Export</h3>
 
 <button onclick="exportCSV()">Download CSV</button>
+<button onclick="exportBackup()">Backup JSON</button>
+
+<input type="file" onchange="importBackup(event)">
 
 </div>
 
 </div>
 
+<div class="fab" onclick="scrollToTop()">+</div>
 
 <script>
 
 let vehicles = JSON.parse(localStorage.getItem("vehicles")||"[]")
 let logs = JSON.parse(localStorage.getItem("logs")||"[]")
-let serviceKM = localStorage.getItem("serviceKM")
+let selectedVehicle = vehicles[0] || null
 
 let costChart
-let mileageChart
+let efficiencyChart
+let monthlyChart
 
 function save(){
 localStorage.setItem("vehicles",JSON.stringify(vehicles))
 localStorage.setItem("logs",JSON.stringify(logs))
 }
 
-function addVehicle(){
-let name=document.getElementById("vehicleName").value
-if(!name) return
-vehicles.push(name)
-save()
-loadVehicles()
+function renderVehicles(){
+
+let html=""
+
+vehicles.forEach(v=>{
+html+=`
+<div class="vehicle-card ${v===selectedVehicle?'active':''}"
+onclick="selectVehicle('${v}')">
+🚗<br>${v}
+</div>`
+})
+
+document.getElementById("vehicleCards").innerHTML=html
+
 }
 
-function loadVehicles(){
-let select=document.getElementById("vehicleSelect")
-select.innerHTML=""
-vehicles.forEach(v=>{
-let opt=document.createElement("option")
-opt.value=v
-opt.text=v
-select.appendChild(opt)
-})
+function selectVehicle(v){
+selectedVehicle=v
+renderVehicles()
 render()
+}
+
+function addVehicle(){
+
+let name=document.getElementById("vehicleName").value
+
+if(!name) return
+
+vehicles.push(name)
+selectedVehicle=name
+
+save()
+renderVehicles()
+
 }
 
 function addFuel(){
 
-let vehicle=document.getElementById("vehicleSelect").value
-
 let entry={
-vehicle,
+vehicle:selectedVehicle,
 date:document.getElementById("date").value,
 km:Number(document.getElementById("km").value),
 liters:Number(document.getElementById("liters").value),
@@ -259,18 +336,17 @@ price:Number(document.getElementById("price").value)
 logs.push(entry)
 
 save()
-
 render()
 
 }
 
 function render(){
 
-let vehicle=document.getElementById("vehicleSelect").value
-
-let data=logs.filter(l=>l.vehicle===vehicle)
+let data=logs.filter(l=>l.vehicle===selectedVehicle)
 
 let prevKM=null
+
+let html=""
 
 let totalCost=0
 let mileageSum=0
@@ -279,11 +355,6 @@ let mileageCount=0
 let labels=[]
 let costData=[]
 let mileageData=[]
-
-let month=new Date().getMonth()
-let monthCost=0
-
-let html=""
 
 data.forEach(d=>{
 
@@ -310,10 +381,8 @@ totalCost+=d.price
 labels.push(d.date)
 costData.push(d.price)
 
-if(new Date(d.date).getMonth()==month)
-monthCost+=d.price
-
-html+=`<tr>
+html+=`
+<tr>
 <td>${d.date}</td>
 <td>${d.km}</td>
 <td>${d.liters}</td>
@@ -325,18 +394,15 @@ html+=`<tr>
 })
 
 document.getElementById("history").innerHTML=html
-
 document.getElementById("totalCost").innerText=totalCost.toFixed(2)
-
-document.getElementById("monthCost").innerText=monthCost.toFixed(2)
+document.getElementById("entryCount").innerText=data.length
 
 let avg=(mileageSum/mileageCount)||0
-
 document.getElementById("avgMileage").innerText=avg.toFixed(2)
 
 drawCharts(labels,costData,mileageData)
-
-checkService(prevKM)
+drawMonthlyChart()
+drawEfficiencyChart()
 
 }
 
@@ -349,37 +415,74 @@ type:"bar",
 data:{labels,datasets:[{label:"Fuel Cost",data:costData}]}
 })
 
-if(mileageChart) mileageChart.destroy()
+}
 
-mileageChart=new Chart(document.getElementById("mileageChart"),{
+function drawEfficiencyChart(){
+
+let data=logs.filter(l=>l.vehicle===selectedVehicle)
+
+let prev=null
+let mileage=[]
+let labels=[]
+
+data.forEach(d=>{
+
+if(prev!=null){
+
+let dist=d.km-prev
+mileage.push((dist/d.liters).toFixed(2))
+labels.push(d.date)
+
+}
+
+prev=d.km
+
+})
+
+if(efficiencyChart) efficiencyChart.destroy()
+
+efficiencyChart=new Chart(document.getElementById("efficiencyChart"),{
+
 type:"line",
-data:{labels:labels.slice(1),datasets:[{label:"Mileage",data:mileageData}]}
+
+data:{
+labels:labels,
+datasets:[{label:"Mileage Trend",data:mileage}]
+}
+
 })
 
 }
 
-function toggleTheme(){
-document.body.classList.toggle("dark")
-localStorage.setItem("theme",document.body.classList.contains("dark"))
+function drawMonthlyChart(){
+
+let monthly={}
+
+logs.forEach(l=>{
+
+let m=l.date.slice(0,7)
+
+if(!monthly[m]) monthly[m]=0
+
+monthly[m]+=l.price
+
+})
+
+let labels=Object.keys(monthly)
+let values=Object.values(monthly)
+
+if(monthlyChart) monthlyChart.destroy()
+
+monthlyChart=new Chart(document.getElementById("monthlyChart"),{
+
+type:"bar",
+
+data:{
+labels:labels,
+datasets:[{label:"Monthly Fuel Cost",data:values}]
 }
 
-if(localStorage.getItem("theme")==="true")
-document.body.classList.add("dark")
-
-function saveService(){
-serviceKM=document.getElementById("serviceKM").value
-localStorage.setItem("serviceKM",serviceKM)
-}
-
-function checkService(currentKM){
-
-if(!serviceKM) return
-
-if(currentKM>=serviceKM){
-document.getElementById("serviceAlert").innerText="Service Due!"
-}else{
-document.getElementById("serviceAlert").innerText="Next service at "+serviceKM+" km"
-}
+})
 
 }
 
@@ -394,14 +497,61 @@ csv+=`${l.date},${l.km},${l.liters},${l.price}\n`
 let blob=new Blob([csv])
 
 let a=document.createElement("a")
-
 a.href=URL.createObjectURL(blob)
 a.download="fuel-data.csv"
 a.click()
 
 }
 
-loadVehicles()
+function exportBackup(){
+
+let data={vehicles,logs}
+
+let blob=new Blob([JSON.stringify(data)])
+
+let a=document.createElement("a")
+a.href=URL.createObjectURL(blob)
+a.download="fuel-backup.json"
+a.click()
+
+}
+
+function importBackup(event){
+
+let file=event.target.files[0]
+
+let reader=new FileReader()
+
+reader.onload=function(){
+
+let data=JSON.parse(reader.result)
+
+vehicles=data.vehicles
+logs=data.logs
+
+save()
+renderVehicles()
+
+}
+
+reader.readAsText(file)
+
+}
+
+function toggleTheme(){
+document.body.classList.toggle("dark")
+localStorage.setItem("theme",document.body.classList.contains("dark"))
+}
+
+if(localStorage.getItem("theme")==="true")
+document.body.classList.add("dark")
+
+function scrollToTop(){
+window.scrollTo({top:0,behavior:"smooth"})
+}
+
+renderVehicles()
+render()
 
 </script>
 
