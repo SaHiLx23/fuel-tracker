@@ -1,42 +1,93 @@
 import { db } from "./firebase.js";
+import { state } from "./state.js";
 
 import {
 collection,
 addDoc,
-getDocs
+query,
+orderBy,
+onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-window.addVehicle = async function(){
+let chart;
 
-let name=document.getElementById("vehicleName").value;
+window.addFuel=async()=>{
+
+let vehicle=document.getElementById("vehicleSelect").value;
+
+let date=document.getElementById("date").value;
+let km=document.getElementById("km").value;
+let liters=document.getElementById("liters").value;
+let price=document.getElementById("price").value;
 
 await addDoc(
-collection(db,"users",currentUser.uid,"vehicles"),
-{name}
-);
-
-loadVehicles();
+collection(db,"users",state.user.uid,"vehicles",vehicle,"fuel_logs"),
+{
+date,
+km:Number(km),
+liters:Number(liters),
+price:Number(price)
+});
 
 };
 
-window.loadVehicles = async function(){
+window.loadHistory=()=>{
 
-const snapshot=await getDocs(
-collection(db,"users",currentUser.uid,"vehicles")
+let vehicle=document.getElementById("vehicleSelect").value;
+
+const q=query(
+collection(db,"users",state.user.uid,"vehicles",vehicle,"fuel_logs"),
+orderBy("km")
 );
 
-let select=document.getElementById("vehicleSelect");
+onSnapshot(q,(snapshot)=>{
 
-select.innerHTML="";
+let prevKM=null;
+let html="";
+let labels=[];
+let costs=[];
 
 snapshot.forEach(doc=>{
 
-let opt=document.createElement("option");
+let d=doc.data();
 
-opt.value=doc.id;
-opt.text=doc.data().name;
+let mileage="-";
 
-select.appendChild(opt);
+if(prevKM!==null){
+
+let distance=d.km-prevKM;
+mileage=(distance/d.liters).toFixed(2);
+
+}
+
+prevKM=d.km;
+
+labels.push(d.date);
+costs.push(d.price);
+
+html+=`
+<tr>
+<td>${d.date}</td>
+<td>${d.km}</td>
+<td>${d.liters}</td>
+<td>${d.price}</td>
+<td>${mileage}</td>
+</tr>
+`;
+
+});
+
+document.getElementById("history").innerHTML=html;
+
+if(chart) chart.destroy();
+
+chart=new Chart(document.getElementById("fuelChart"),{
+type:"bar",
+data:{
+labels:labels,
+datasets:[{label:"Fuel Cost",data:costs}]
+}
+});
 
 });
 
