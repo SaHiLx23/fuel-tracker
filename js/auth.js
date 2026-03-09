@@ -1,24 +1,24 @@
 import { auth } from "./firebase.js";
+import { state } from "./state.js";
 
 import {
 GoogleAuthProvider,
 signInWithRedirect,
-onAuthStateChanged,
-signOut
+signOut,
+onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-const loginBtn = document.getElementById("loginBtn");
-const logoutBtn = document.getElementById("logoutBtn");
+const loginBtn=document.getElementById("loginBtn");
+const logoutBtn=document.getElementById("logoutBtn");
 
-loginBtn.onclick = () => {
+loginBtn.onclick=()=>{
 
-const provider = new GoogleAuthProvider();
-
-signInWithRedirect(auth, provider);
+const provider=new GoogleAuthProvider();
+signInWithRedirect(auth,provider);
 
 };
 
-logoutBtn.onclick = () => {
+logoutBtn.onclick=()=>{
 
 signOut(auth);
 
@@ -26,19 +26,18 @@ signOut(auth);
 
 onAuthStateChanged(auth,(user)=>{
 
+state.user=user;
+
 if(user){
 
 loginBtn.style.display="none";
 logoutBtn.style.display="inline-block";
 
-document.getElementById("userInfo").innerText =
-"Logged in: "+user.email;
+document.getElementById("userInfo").innerText="Logged in: "+user.email;
 
-window.currentUser=user;
 loadVehicles();
 
-}
-else{
+}else{
 
 loginBtn.style.display="inline-block";
 logoutBtn.style.display="none";
