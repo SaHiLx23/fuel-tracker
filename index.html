@@ -1,81 +1,161 @@
 <!DOCTYPE html>
 <html>
 <head>
-
-<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-
 <title>Fuel Tracker</title>
 
-<link rel="stylesheet" href="css/style.css">
 <link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2c7be5">
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
+<style>
+
+:root{
+--bg:#f2f2f2;
+--card:#ffffff;
+--text:#000;
+--accent:#2c7be5;
+}
+
+.dark{
+--bg:#1e1e1e;
+--card:#2b2b2b;
+--text:#fff;
+--accent:#4ea1ff;
+}
+
+body{
+margin:0;
+font-family:Arial;
+background:var(--bg);
+color:var(--text);
+}
+
+.container{
+max-width:900px;
+margin:auto;
+padding:20px;
+}
+
+.card{
+background:var(--card);
+padding:15px;
+border-radius:10px;
+margin-bottom:15px;
+box-shadow:0 2px 6px rgba(0,0,0,0.1);
+}
+
+.grid{
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:10px;
+}
+
+input,select{
+width:100%;
+padding:10px;
+margin-top:5px;
+}
+
+button{
+padding:10px;
+background:var(--accent);
+color:white;
+border:none;
+border-radius:6px;
+cursor:pointer;
+}
+
+table{
+width:100%;
+border-collapse:collapse;
+margin-top:10px;
+}
+
+td,th{
+border:1px solid #ddd;
+padding:8px;
+text-align:center;
+}
+
+.summary{
+display:grid;
+grid-template-columns:1fr 1fr 1fr;
+gap:10px;
+}
+
+.summary div{
+background:var(--card);
+padding:10px;
+border-radius:8px;
+text-align:center;
+}
+
+canvas{
+margin-top:15px;
+}
+
+@media(max-width:700px){
+.grid{grid-template-columns:1fr}
+.summary{grid-template-columns:1fr}
+}
+
+</style>
 </head>
 
 <body>
 
 <div class="container">
 
-<div class="topbar">
-
 <h2>Fuel Tracker</h2>
+<button onclick="toggleTheme()">Toggle Theme</button>
 
-<div>
-<button id="themeBtn">Theme</button>
-<button id="loginBtn">Login</button>
-<button id="logoutBtn" style="display:none">Logout</button>
-</div>
-
-</div>
-
-<p id="userInfo"></p>
-
-<hr>
+<div class="card">
 
 <h3>Add Vehicle</h3>
 
 <input id="vehicleName" placeholder="Vehicle name">
-<button id="addVehicleBtn">Add Vehicle</button>
+<button onclick="addVehicle()">Add Vehicle</button>
 
-<select id="vehicleSelect"></select>
+<select id="vehicleSelect" onchange="render()"></select>
 
-<hr>
+</div>
 
-<h3>Add Fuel</h3>
+
+<div class="card">
+
+<h3>Add Fuel Entry</h3>
 
 <div class="grid">
 
-<input type="date" id="date">
-<input type="number" id="km" placeholder="KM">
-<input type="number" id="liters" placeholder="Liters">
-<input type="number" id="price" placeholder="Price">
+<input id="date" type="date">
+<input id="km" placeholder="Odometer KM">
+
+<input id="liters" placeholder="Fuel Liters">
+<input id="price" placeholder="Total Price">
 
 </div>
 
-<button id="saveFuelBtn">Save Fuel</button>
+<button onclick="addFuel()">Save Fuel</button>
 
-<div class="stats">
+</div>
+
+
+<div class="summary">
+
+<div>Total Cost ₹<br><b id="totalCost">0</b></div>
+
+<div>Average Mileage<br><b id="avgMileage">0</b></div>
+
+<div>Monthly Cost ₹<br><b id="monthCost">0</b></div>
+
+</div>
+
 
 <div class="card">
-<h3>Total Cost</h3>
-<p id="totalCost">0</p>
-</div>
 
-<div class="card">
-<h3>Average Mileage</h3>
-<p id="avgMileage">0</p>
-</div>
-
-<div class="card">
-<h3>Cost/KM</h3>
-<p id="costPerKm">0</p>
-</div>
-
-</div>
-
-<canvas id="fuelChart"></canvas>
+<h3>Fuel History</h3>
 
 <table>
 
@@ -85,6 +165,7 @@
 <th>KM</th>
 <th>Liters</th>
 <th>Price</th>
+<th>Price/L</th>
 <th>Mileage</th>
 </tr>
 </thead>
@@ -95,16 +176,238 @@
 
 </div>
 
-<script type="module" src="js/firebase.js"></script>
-<script type="module" src="js/state.js"></script>
-<script type="module" src="js/auth.js"></script>
-<script type="module" src="js/vehicles.js"></script>
-<script type="module" src="js/fuel.js"></script>
-<script type="module" src="js/theme.js"></script>
+
+<div class="card">
+
+<h3>Charts</h3>
+
+<canvas id="costChart"></canvas>
+<canvas id="mileageChart"></canvas>
+
+</div>
+
+
+<div class="card">
+
+<h3>Service Reminder</h3>
+
+<input id="serviceKM" placeholder="Next service KM">
+<button onclick="saveService()">Save Reminder</button>
+
+<p id="serviceAlert"></p>
+
+</div>
+
+
+<div class="card">
+
+<h3>Export Data</h3>
+
+<button onclick="exportCSV()">Download CSV</button>
+
+</div>
+
+</div>
+
 
 <script>
-if("serviceWorker" in navigator){
-navigator.serviceWorker.register("./service-worker.js");
+
+let vehicles = JSON.parse(localStorage.getItem("vehicles")||"[]")
+let logs = JSON.parse(localStorage.getItem("logs")||"[]")
+let serviceKM = localStorage.getItem("serviceKM")
+
+let costChart
+let mileageChart
+
+function save(){
+localStorage.setItem("vehicles",JSON.stringify(vehicles))
+localStorage.setItem("logs",JSON.stringify(logs))
+}
+
+function addVehicle(){
+let name=document.getElementById("vehicleName").value
+if(!name) return
+vehicles.push(name)
+save()
+loadVehicles()
+}
+
+function loadVehicles(){
+let select=document.getElementById("vehicleSelect")
+select.innerHTML=""
+vehicles.forEach(v=>{
+let opt=document.createElement("option")
+opt.value=v
+opt.text=v
+select.appendChild(opt)
+})
+render()
+}
+
+function addFuel(){
+
+let vehicle=document.getElementById("vehicleSelect").value
+
+let entry={
+vehicle,
+date:document.getElementById("date").value,
+km:Number(document.getElementById("km").value),
+liters:Number(document.getElementById("liters").value),
+price:Number(document.getElementById("price").value)
+}
+
+logs.push(entry)
+
+save()
+
+render()
+
+}
+
+function render(){
+
+let vehicle=document.getElementById("vehicleSelect").value
+
+let data=logs.filter(l=>l.vehicle===vehicle)
+
+let prevKM=null
+
+let totalCost=0
+let mileageSum=0
+let mileageCount=0
+
+let labels=[]
+let costData=[]
+let mileageData=[]
+
+let month=new Date().getMonth()
+let monthCost=0
+
+let html=""
+
+data.forEach(d=>{
+
+let mileage="-"
+
+if(prevKM!=null){
+
+let distance=d.km-prevKM
+mileage=(distance/d.liters).toFixed(2)
+
+mileageSum+=Number(mileage)
+mileageCount++
+
+mileageData.push(mileage)
+
+}
+
+prevKM=d.km
+
+let ppl=(d.price/d.liters).toFixed(2)
+
+totalCost+=d.price
+
+labels.push(d.date)
+costData.push(d.price)
+
+if(new Date(d.date).getMonth()==month)
+monthCost+=d.price
+
+html+=`<tr>
+<td>${d.date}</td>
+<td>${d.km}</td>
+<td>${d.liters}</td>
+<td>${d.price}</td>
+<td>${ppl}</td>
+<td>${mileage}</td>
+</tr>`
+
+})
+
+document.getElementById("history").innerHTML=html
+
+document.getElementById("totalCost").innerText=totalCost.toFixed(2)
+
+document.getElementById("monthCost").innerText=monthCost.toFixed(2)
+
+let avg=(mileageSum/mileageCount)||0
+
+document.getElementById("avgMileage").innerText=avg.toFixed(2)
+
+drawCharts(labels,costData,mileageData)
+
+checkService(prevKM)
+
+}
+
+function drawCharts(labels,costData,mileageData){
+
+if(costChart) costChart.destroy()
+
+costChart=new Chart(document.getElementById("costChart"),{
+type:"bar",
+data:{labels,datasets:[{label:"Fuel Cost",data:costData}]}
+})
+
+if(mileageChart) mileageChart.destroy()
+
+mileageChart=new Chart(document.getElementById("mileageChart"),{
+type:"line",
+data:{labels:labels.slice(1),datasets:[{label:"Mileage",data:mileageData}]}
+})
+
+}
+
+function toggleTheme(){
+document.body.classList.toggle("dark")
+localStorage.setItem("theme",document.body.classList.contains("dark"))
+}
+
+if(localStorage.getItem("theme")==="true")
+document.body.classList.add("dark")
+
+function saveService(){
+serviceKM=document.getElementById("serviceKM").value
+localStorage.setItem("serviceKM",serviceKM)
+}
+
+function checkService(currentKM){
+
+if(!serviceKM) return
+
+if(currentKM>=serviceKM){
+document.getElementById("serviceAlert").innerText="Service Due!"
+}else{
+document.getElementById("serviceAlert").innerText="Next service at "+serviceKM+" km"
+}
+
+}
+
+function exportCSV(){
+
+let csv="date,km,liters,price\n"
+
+logs.forEach(l=>{
+csv+=`${l.date},${l.km},${l.liters},${l.price}\n`
+})
+
+let blob=new Blob([csv])
+
+let a=document.createElement("a")
+
+a.href=URL.createObjectURL(blob)
+a.download="fuel-data.csv"
+a.click()
+
+}
+
+loadVehicles()
+
+</script>
+
+<script>
+if ("serviceWorker" in navigator) {
+navigator.serviceWorker.register("service-worker.js")
 }
 </script>
 
