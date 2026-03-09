@@ -1,9 +1,14 @@
-const CACHE="fuel-app";
+const CACHE="fuel-tracker-v1";
 
-self.addEventListener("install",e=>{
-e.waitUntil(
+self.addEventListener("install",event=>{
+
+event.waitUntil(
 caches.open(CACHE).then(cache=>{
-return cache.addAll(["/"]);
+return cache.addAll([
+"./",
+"./index.html"
+]);
 })
 );
+
 });
